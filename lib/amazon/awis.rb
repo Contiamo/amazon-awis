@@ -65,15 +65,19 @@ module Amazon
       url = self.class.prepare_url(domain, @action, @options)
       log "Request URL: #{url}"
 
+      http = Net::HTTP.new(url.host, url.port)
+
+      http.read_timeout = 60
+      http.open_timeout = 60
+
       # Amazon alexa endpoint seems to have problems and sometimes returns a 404 for valid
       # awis requests - as a workaround, we hammer the endpoint max 20 times until we get
       # a proper response -
-
       request_counter = 0
 
-      while res = Net::HTTP.get_response(url) do
+      while res = http.start { |http|http.get url } do
         request_counter += 1
-        break if res.kind_of? Net::HTTPSuccess || request_counter >= 20
+        break if res.kind_of?(Net::HTTPSuccess) || request_counter >= 20
       end
 
       unless res.kind_of? Net::HTTPSuccess
